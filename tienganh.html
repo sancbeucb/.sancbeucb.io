@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Tiếng Anh Pro Max</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f4; }
+        h1 { color: #e44d26; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        input, button, select, textarea { width: 100%; padding: 10px; margin: 5px 0; }
+        .flashcard { background: lightgreen; margin: 5px; padding: 10px; border-radius: 5px; cursor: pointer; }
+        .fill-in, .sentence-exercise { display: none; }
+        .wrong { background: #ffcccc; }
+        .correct { background: #ccffcc; }
+    </style>
+</head>
+<body>
+
+    <h1>📚 Học Tiếng Anh Pro Max</h1>
+
+    <div class="container">
+        <h2>📂 Thêm thư mục</h2>
+        <input type="text" id="folder-name" placeholder="Nhập tên thư mục">
+        <button onclick="addFolder()">Thêm thư mục</button>
+        <select id="folder-select"></select>
+
+        <h2>📖 Nhập từ nhanh</h2>
+        <textarea id="bulk-input" placeholder="Dán danh sách từ (VD: apple - táo)"></textarea>
+        <button onclick="addBulkWords()">Thêm nhanh</button>
+
+        <h2>📖 Danh sách Flashcard</h2>
+        <div id="flashcards"></div>
+
+        <h2>📝 Bài tập điền từ</h2>
+        <button onclick="startFillIn()">Bắt đầu</button>
+        <div class="fill-in">
+            <p id="fill-in-question"></p>
+            <input type="text" id="fill-in-answer" placeholder="Điền từ chính xác" oninput="checkFillIn()">
+        </div>
+
+        <h2>✍️ Bài tập đặt câu</h2>
+        <button onclick="startSentenceExercise()">Bắt đầu</button>
+        <div class="sentence-exercise">
+            <p id="sentence-question"></p>
+            <textarea id="sentence-answer" placeholder="Viết một câu sử dụng từ này"></textarea>
+            <button onclick="checkSentence()">Nộp bài</button>
+        </div>
+
+        <h2>🔄 Ôn tập từ sai</h2>
+        <button onclick="startReview()">Ôn tập</button>
+        <div id="review-list"></div>
+    </div>
+
+    <script>
+        let folders = JSON.parse(localStorage.getItem('folders')) || {};
+        let reviewWords = JSON.parse(localStorage.getItem('reviewWords')) || {};
+        let currentWord = null;
+
+        function saveData() {
+            localStorage.setItem('folders', JSON.stringify(folders));
+            localStorage.setItem('reviewWords', JSON.stringify(reviewWords));
+        }
+
+        function addFolder() {
+            let folderName = document.getElementById('folder-name').value.trim();
+            if (folderName && !folders[folderName]) {
+                folders[folderName] = [];
+                saveData();
+                renderFolders();
+                document.getElementById('folder-name').value = '';
+            }
+        }
+
+        function renderFolders() {
+            let folderSelect = document.getElementById('folder-select');
+            folderSelect.innerHTML = '';
+            Object.keys(folders).forEach(folder => {
+                let option = document.createElement('option');
+                option.value = folder;
+                option.textContent = folder;
+                folderSelect.appendChild(option);
+            });
+        }
+
+        function addBulkWords() {
+            let inputText = document.getElementById('bulk-input').value.trim();
+            let selectedFolder = document.getElementById('folder-select').value;
+            if (!inputText || !selectedFolder) return;
+
+            let lines = inputText.split("\n");
+            let newWords = [];
+
+            lines.forEach(line => {
+                let parts = line.split(/[-|:]/);
+                if (parts.length === 2) {
+                    let word = parts[0].trim();
+                    let meaning = parts[1].trim();
+                    if (word && meaning) {
+                        newWords.push({ word, meaning });
+                    }
+                }
+            });
+
+            if (newWords.length > 0) {
+                folders[selectedFolder].push(...newWords);
+                saveData();
+                renderFlashcards();
+                document.getElementById('bulk-input').value = '';
+            } else {
+                alert("Lỗi định dạng! Hãy nhập theo dạng: từ - nghĩa");
+            }
+        }
+
+        function renderFlashcards() {
+            let selectedFolder = document.getElementById('folder-select').value;
+            let flashcardContainer = document.getElementById('flashcards');
+            flashcardContainer.innerHTML = '';
+            (folders[selectedFolder] || []).forEach(fc => {
+                let card = document.createElement('div');
+                card.className = 'flashcard';
+                card.textContent = fc.word;
+                card.onclick = () => alert(Nghĩa: ${fc.meaning});
+                flashcardContainer.appendChild(card);
+            });
+        }
+
+        function startFillIn() {
+            let selectedFolder = document.getElementById('folder-select').value;
+            if (!folders[selectedFolder] || folders[selectedFolder].length === 0) {
+                alert("Chưa có từ vựng!");
+                return;
+            }
+            document.querySelector('.fill-in').style.display = 'block';
+            nextFillIn();
+        }
+
+        function nextFillIn() {
+            let selectedFolder = document.getElementById('folder-select').value;
+            let word = folders[selectedFolder][Math.floor(Math.random() * folders[selectedFolder].length)];
+            currentWord = word;
+            document.getElementById('fill-in-question').textContent = Nghĩa: ${word.meaning};
+            document.getElementById('fill-in-answer').value = '';
+        }
+
+        function checkFillIn() {
+            let answer = document.getElementById('fill-in-answer').value.trim();
+            if (answer.toLowerCase() === currentWord.word.toLowerCase()) {
+                setTimeout(nextFillIn, 500);
+            } else {
+                reviewWords[currentWord.word] = { meaning: currentWord.meaning };
+                saveData();
+            }
+        }
+
+        function startSentenceExercise() {
+            let selectedFolder = document.getElementById('folder-select').value;
+            if (!folders[selectedFolder] || folders[selectedFolder].length === 0) {
+                alert("Chưa có từ vựng!");
+                return;
+            }
+            document.querySelector('.sentence-exercise').style.display = 'block';
+            let word = folders[selectedFolder][Math.floor(Math.random() * folders[selectedFolder].length)];
+            currentWord = word;
+            document.getElementById('sentence-question').textContent = Hãy đặt một câu với từ: ${word.word};
+        }
+
+        function checkSentence() {
+            alert("Câu đã được lưu lại!");
+            document.getElementById('sentence-answer').value = '';
+        }
+
+        function startReview() {
+            let reviewContainer = document.getElementById('review-list');
+            reviewContainer.innerHTML = '';
+            Object.keys(reviewWords).forEach(word => {
+                let item = document.createElement('div');
+                item.className = 'flashcard';
+                item.textContent = ${word} - ${reviewWords[word].meaning};
+                reviewContainer.appendChild(item);
+            });
+        }
+
+        renderFolders();
+    </script>
+
+</body>
+</html>
